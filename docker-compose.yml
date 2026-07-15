@@ -4,7 +4,7 @@ services:
     container_name: vybe-cabs-mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017" # host 27018 -> avoids clashing with a locally-installed MongoDB on the default 27017; the api container talks to it over the internal Docker network on 27017 regardless
     volumes:
       - mongo_data:/data/db
     healthcheck:

@@ -241,7 +241,10 @@ cp .env.example .env   # optional, docker-compose.yml already sets equivalent en
 docker compose up --build
 ```
 
-This starts MongoDB (`:27017`), Redis (`:6379`), and the API (`:3000`).
+This starts MongoDB (host `:27018` -> container `:27017`, remapped so it doesn't
+clash with a MongoDB already installed on your host - the `api` container talks
+to it over the internal Docker network on the standard `27017` regardless),
+Redis (`:6379`), and the API (`:3000`).
 
 ### Option B — run locally against your own Mongo/Redis
 
@@ -347,7 +350,7 @@ rather run it as a conventional test suite / wire it into CI) lives at
 
 ```bash
 docker compose up -d mongo redis
-MONGODB_URI=mongodb://localhost:27017/vybe_cabs REDIS_HOST=localhost REDIS_PORT=6379 npm run test:e2e
+MONGODB_URI=mongodb://localhost:27018/vybe_cabs REDIS_HOST=localhost REDIS_PORT=6379 npm run test:e2e
 ```
 
 > Both verification methods assume they're running against an otherwise-idle
