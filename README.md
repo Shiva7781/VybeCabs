@@ -30,6 +30,7 @@ scripting). Everything else follows the brief as given.
 8. [API reference / curl examples](#api-reference--curl-examples)
 9. [Concurrency verification script](#concurrency-verification-script)
 10. [Project structure](#project-structure)
+11. [Running this on a fresh machine (step-by-step)](#running-this-on-a-fresh-machine-step-by-step)
 
 ---
 
@@ -387,4 +388,89 @@ postman/
   VybeCabs.postman_collection.json
 docker-compose.yml                 Mongo + Redis + API
 Dockerfile
+```
+
+## Running this on a fresh machine (step-by-step)
+
+The [Setup](#setup) section above assumes Docker and Node are already on your
+machine. This section is the complete path from "nothing installed" to a
+running, verified instance — this is exactly the sequence used to verify this
+repo end-to-end (including hitting and fixing the Docker-not-installed and
+port-clash issues below for real, not hypothetically).
+
+**1. Get the code**
+
+```bash
+git clone git@github.com:Shiva7781/VybeCabs.git   # or the HTTPS URL if you haven't set up an SSH key
+cd VybeCabs
+```
+
+**2. Install Docker + the Compose plugin, if you don't already have them**
+
+Check first:
+
+```bash
+docker --version && docker compose version
+```
+
+If that fails with "command not found" (Ubuntu/Debian):
+
+```bash
+sudo apt update
+sudo apt install docker.io docker-compose-v2
+
+# let your user run docker without typing sudo every time
+sudo usermod -aG docker $USER
+newgrp docker   # or log out/in - either picks up the new group membership
+```
+
+On macOS/Windows, install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+instead, which bundles both `docker` and `docker compose`.
+
+**3. Start the stack**
+
+```bash
+docker compose up --build
+```
+
+First run pulls the `mongo:7` and `redis:7-alpine` images and builds the `api`
+image from the [Dockerfile](Dockerfile), so expect it to take a minute or two.
+Leave this running (or add `-d` to detach) and use a second terminal for the
+rest.
+
+**4. If a port is already taken on your machine**
+
+`docker-compose.yml` maps `mongo` to host port `27018` specifically because
+this project's own verification machine already had a system MongoDB bound to
+the default `27017` - if you hit a similar `address already in use` error for
+`6379` (Redis) or `3000` (the API) because something else on your machine owns
+that port, edit the corresponding `ports:` line in
+[docker-compose.yml](docker-compose.yml) (format is `"<host-port>:<container-port>"`,
+only the left side needs to change) and re-run `docker compose up --build`.
+
+**5. Verify it's actually up**
+
+```bash
+curl http://localhost:3000/riders   # should return []
+docker compose ps                   # all three services should show healthy/running
+```
+
+**6. Seed demo data and prove the concurrency guarantee**
+
+```bash
+npm install   # only needed to run the TypeScript scripts below, not the API itself
+npm run seed
+npm run verify:concurrency -- --with-timeout-test
+```
+
+You should see `=== Result: 14 passed, 0 failed ===` at the end. If you've run
+this more than once against the same containers without clearing state first,
+see the note in [Concurrency verification script](#concurrency-verification-script)
+about flushing Redis/Mongo between runs.
+
+**7. Shut it down**
+
+```bash
+docker compose down       # stop and remove containers, keep the Mongo data volume
+docker compose down -v    # same, but also delete the Mongo data volume for a clean slate
 ```
