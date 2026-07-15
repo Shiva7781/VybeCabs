@@ -18,7 +18,15 @@ import axios from 'axios';
 const BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3000';
 const http = axios.create({ baseURL: BASE_URL, validateStatus: () => true });
 
-const CONCURRENT_DRIVERS = parseInt(process.env.CONCURRENT_DRIVERS ?? '8', 10);
+// Defaults to the server's ALLOCATION_CANDIDATES_PER_ROUND so every driver created
+// here is guaranteed to land in round 1's candidate set (all placed within round-1
+// radius). Override CONCURRENT_DRIVERS to test with fewer than the round cap, or
+// raise both ALLOCATION_CANDIDATES_PER_ROUND (server) and CONCURRENT_DRIVERS together
+// to stress a bigger simultaneous race.
+const CONCURRENT_DRIVERS = parseInt(
+  process.env.CONCURRENT_DRIVERS ?? process.env.ALLOCATION_CANDIDATES_PER_ROUND ?? '5',
+  10,
+);
 const PICKUP = { lat: 12.9716, lng: 77.5946 };
 
 let pass = 0;

@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import Redis from 'ioredis';
@@ -25,8 +25,14 @@ export enum AcceptResult {
 }
 
 @Injectable()
-export class RedisService implements OnModuleInit {
+export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+
+  async onModuleDestroy() {
+    // Without this the raw ioredis client keeps its socket open forever, which
+    // prevents graceful shutdown (and made Jest e2e runs hang after tests passed).
+    await this.redis.quit();
+  }
 
   onModuleInit() {
     const luaPath = join(__dirname, 'lua', 'accept-ride.lua');

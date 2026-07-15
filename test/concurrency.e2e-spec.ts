@@ -17,7 +17,10 @@ describe('Concurrent ride acceptance (e2e)', () => {
     const moduleRef: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
-    await app.init();
+    // Bind to a real ephemeral TCP port rather than leaving supertest to lazily
+    // bind app.getHttpServer() on first use - under genuinely concurrent requests
+    // the lazy-bind path was flaky (intermittent ECONNRESET) in this environment.
+    await app.listen(0);
   });
 
   afterAll(async () => {
@@ -42,14 +45,17 @@ describe('Concurrent ride acceptance (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/drivers/${driverId}/location`)
       .send({ lat: PICKUP.lat + offset * 0.0005, lng: PICKUP.lng + offset * 0.0004 })
-      .expect(201);
-    await request(app.getHttpServer()).post(`/drivers/${driverId}/status`).send({ status: 'AVAILABLE' }).expect(201);
+      .expect(200);
+    await request(app.getHttpServer()).post(`/drivers/${driverId}/status`).send({ status: 'AVAILABLE' }).expect(200);
 
     return driverId;
   }
 
   it('assigns exactly one driver when many accept the same ride simultaneously, and stays idempotent on retry', async () => {
-    const DRIVER_COUNT = 6;
+    // Must not exceed the server's ALLOCATION_CANDIDATES_PER_ROUND (default 5) or
+    // round 1 won't offer every driver created below - see AppModule's ConfigModule,
+    // which reads the same env var this test process runs under.
+    const DRIVER_COUNT = parseInt(process.env.ALLOCATION_CANDIDATES_PER_ROUND ?? '5', 10);
     const riderId = await createRider();
     const driverIds = await Promise.all(
       Array.from({ length: DRIVER_COUNT }, (_, i) => createAvailableDriver(`E2E Driver ${i}`, i - DRIVER_COUNT / 2)),

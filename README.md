@@ -350,6 +350,18 @@ docker compose up -d mongo redis
 MONGODB_URI=mongodb://localhost:27017/vybe_cabs REDIS_HOST=localhost REDIS_PORT=6379 npm run test:e2e
 ```
 
+> Both verification methods assume they're running against an otherwise-idle
+> Mongo/Redis (a fresh `docker compose up` gives you this). If you've been
+> manually poking the API with `curl`/Postman using the *same* fixed demo
+> pickup point beforehand, leftover `AVAILABLE` drivers sitting at the same
+> coordinates can end up in a later test run's round-1 candidate set instead
+> of the drivers the test just created, which throws off the exact
+> winner/conflict counts (not a concurrency bug — the atomic accept logic
+> itself is still exactly-one-winner regardless of who the candidates are;
+> it's just a test-data hygiene concern for repeated manual runs against a
+> reused database). `docker compose down -v && docker compose up --build` for
+> a clean slate.
+
 ## Project structure
 
 ```

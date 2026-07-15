@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { RidesService } from './rides.service';
 import { RequestRideDto } from './dto/request-ride.dto';
 import { AcceptRideDto } from './dto/accept-ride.dto';
@@ -18,11 +18,13 @@ export class RidesController {
   }
 
   @Post(':id/accept')
+  @HttpCode(HttpStatus.OK)
   accept(@Param('id') id: string, @Body() dto: AcceptRideDto) {
     return this.ridesService.acceptRide(id, dto.driverId);
   }
 
   @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
   cancel(@Param('id') id: string) {
     return this.ridesService.cancelRide(id);
   }

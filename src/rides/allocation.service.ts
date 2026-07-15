@@ -57,7 +57,8 @@ export class AllocationService {
   }
 
   private jobId(rideId: string, round: number): string {
-    return `ride:${rideId}:round:${round}`;
+    // BullMQ rejects custom job IDs containing ":" (reserved for its own Redis key namespacing).
+    return `ride-${rideId}-round-${round}`;
   }
 
   async runRound(rideId: string, round: number): Promise<void> {
