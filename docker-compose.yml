@@ -1,0 +1,49 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: vybe-cabs-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vybe-cabs-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: vybe-cabs-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/vybe_cabs
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ALLOCATION_RADIUS_KM_ROUNDS: "3,6,10"
+      ALLOCATION_CANDIDATES_PER_ROUND: "5"
+      ALLOCATION_TIMEOUT_MS: "15000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  mongo_data:

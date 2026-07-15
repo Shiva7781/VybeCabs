@@ -1,0 +1,14 @@
+export enum RideStatus {
+  REQUESTED = 'REQUESTED',
+  SEARCHING = 'SEARCHING',
+  ASSIGNED = 'ASSIGNED',
+  TIMEOUT = 'TIMEOUT',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum RoundOutcome {
+  PENDING = 'PENDING',
+  WON = 'WON',
+  EXPIRED = 'EXPIRED',
+  NO_CANDIDATES = 'NO_CANDIDATES',
+}

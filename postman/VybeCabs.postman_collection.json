@@ -1,0 +1,158 @@
+{
+  "info": {
+    "name": "Vybe Cabs - Driver Allocation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "riderId", "value": "" },
+    { "key": "driverId", "value": "" },
+    { "key": "driverId2", "value": "" },
+    { "key": "rideId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Create Rider",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.collectionVariables.set('riderId', pm.response.json()._id);"],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/riders",
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Demo Rider\",\n  \"phone\": \"+91-9000000000\"\n}" }
+      }
+    },
+    {
+      "name": "Create Driver 1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.collectionVariables.set('driverId', pm.response.json()._id);"],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Asha Verma\",\n  \"phone\": \"+91-9100000001\",\n  \"licensePlate\": \"KA01AB1001\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create Driver 2",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.collectionVariables.set('driverId2', pm.response.json()._id);"],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ravi Kumar\",\n  \"phone\": \"+91-9100000002\",\n  \"licensePlate\": \"KA01AB1002\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Driver 1 - Update Location",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers/{{driverId}}/location",
+        "body": { "mode": "raw", "raw": "{\n  \"lat\": 12.9720,\n  \"lng\": 77.5950\n}" }
+      }
+    },
+    {
+      "name": "Driver 1 - Go Available",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers/{{driverId}}/status",
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"AVAILABLE\"\n}" }
+      }
+    },
+    {
+      "name": "Driver 2 - Update Location",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers/{{driverId2}}/location",
+        "body": { "mode": "raw", "raw": "{\n  \"lat\": 12.9705,\n  \"lng\": 77.5940\n}" }
+      }
+    },
+    {
+      "name": "Driver 2 - Go Available",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/drivers/{{driverId2}}/status",
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"AVAILABLE\"\n}" }
+      }
+    },
+    {
+      "name": "Request Ride",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.collectionVariables.set('rideId', pm.response.json()._id);"],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/rides",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"riderId\": \"{{riderId}}\",\n  \"pickup\": { \"lat\": 12.9716, \"lng\": 77.5946 }\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Ride Status",
+      "request": { "method": "GET", "url": "{{baseUrl}}/rides/{{rideId}}" }
+    },
+    {
+      "name": "Driver 1 - Accept Ride",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/rides/{{rideId}}/accept",
+        "body": { "mode": "raw", "raw": "{\n  \"driverId\": \"{{driverId}}\"\n}" }
+      }
+    },
+    {
+      "name": "Driver 2 - Accept Ride (should 409 once Driver 1 wins)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/rides/{{rideId}}/accept",
+        "body": { "mode": "raw", "raw": "{\n  \"driverId\": \"{{driverId2}}\"\n}" }
+      }
+    },
+    {
+      "name": "Cancel Ride",
+      "request": { "method": "POST", "url": "{{baseUrl}}/rides/{{rideId}}/cancel" }
+    }
+  ]
+}
