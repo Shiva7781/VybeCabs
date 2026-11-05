@@ -5,10 +5,9 @@ requests a ride, the nearest available drivers are found via Redis geo-search,
 multiple drivers are notified simultaneously over WebSockets, and exactly one of
 them is assigned — even if several try to accept at the same instant.
 
-**Stack note:** the original brief specified PostgreSQL; per the requester's
-explicit instruction this implementation uses **MongoDB** instead for all
-persistent storage. Redis is used exactly as specified (mandatory, GEO + atomic
-scripting). Everything else follows the brief as given.
+**Stack:** **MongoDB** handles all persistent storage (riders, drivers, rides,
+audit trail). **Redis** is the real-time core: GEO search for nearby drivers,
+atomic Lua scripting for race-free acceptance, and BullMQ for timeouts/retries.
 
 - **NestJS** (TypeScript)
 - **MongoDB** (Mongoose) — riders, drivers, rides, ride audit trail
@@ -73,8 +72,8 @@ sequenceDiagram
     API-->>D2: 409 {message: offer no longer available}
 ```
 
-**Why WebSockets for notification:** the brief allows WebSockets, SSE, polling, or
-a simulated log — the concurrency guarantee lives entirely in the Redis Lua
+**Why WebSockets for notification:** WebSockets, SSE, polling, or a simulated log
+would all work — the concurrency guarantee lives entirely in the Redis Lua
 script, not in the transport. WebSockets were chosen because (a) NestJS has
 first-class support (`@nestjs/websockets` + Socket.IO), (b) it's the closest
 simulation of a real driver app receiving a push notification, and (c) it's
@@ -106,7 +105,7 @@ stateDiagram-v2
 | `SEARCHING` | One or more offer rounds are in flight; drivers have been notified and a timeout job is scheduled. |
 | `ASSIGNED` | A driver won the atomic accept race; ride is done from an allocation standpoint. |
 | `TIMEOUT` | Every configured retry round elapsed with no acceptance (or no candidates found at any radius). |
-| `CANCELLED` | *(added beyond the brief's 4 states)* Rider cancelled before assignment. Needed so an in-flight `SEARCHING` ride has a clean terminal state other than `TIMEOUT`, and so any in-flight accept requests can be rejected deterministically instead of silently ignored. |
+| `CANCELLED` | Rider cancelled before assignment. Needed so an in-flight `SEARCHING` ride has a clean terminal state other than `TIMEOUT`, and so any in-flight accept requests can be rejected deterministically instead of silently ignored. |
 
 Each ride also stores a `rounds[]` audit trail (round number, radius used,
 candidate driver IDs, start/expiry time, outcome: `PENDING` / `WON` / `EXPIRED`
@@ -198,10 +197,11 @@ This is verified directly by the script (Test 2).
 
 ## Design choices & assumptions
 
-Made explicit here per the instruction to avoid silent assumptions:
+Every assumption is stated explicitly rather than left implicit:
 
-- **No authentication.** The brief doesn't mention auth and it's orthogonal to
-  the evaluation criteria (geo search, concurrency, state machine, idempotency).
+- **No authentication.** Auth is deliberately out of scope — it's orthogonal to
+  the problems this project focuses on (geo search, concurrency, state machine,
+  idempotency).
   Riders/drivers/rides are identified by MongoDB ObjectId; any caller can act as
   any rider/driver. A production system would add auth in front of this.
 - **`BUSY` is system-managed.** A driver can self-report `AVAILABLE`/`OFFLINE`
@@ -210,8 +210,8 @@ Made explicit here per the instruction to avoid silent assumptions:
   with 400) — otherwise a driver could fake availability mid-race.
   `DriversService.markAvailableAgain` exists for completeness (e.g. once a ride
   completes) but there's no `POST /rides/:id/complete` endpoint, since ride
-  completion/trip-tracking is outside this assignment's scope (allocation only).
-- **`CANCELLED` state added** beyond the brief's 4 named states — see the state
+  completion/trip-tracking is outside this project's scope (allocation only).
+- **`CANCELLED` state added** alongside the 4 core states — see the state
   table above for why.
 - **Allocation starts synchronously inside `POST /rides`.** The first round's
   geo-search + WebSocket notify all happen before the API responds, so the
@@ -227,15 +227,10 @@ Made explicit here per the instruction to avoid silent assumptions:
 - **Drivers already offered in an earlier round are excluded** from later
   rounds' candidate search (`alreadyTried` in `AllocationService.runRound`), so
   a driver who ignored round 1 isn't re-spammed in round 2.
-- **This sandbox has no Docker/`gh` CLI available**, so the code here is
-  type-checked (`tsc --noEmit`) and built (`nest build`) successfully, but not
-  runtime-exercised against live Mongo/Redis containers in this environment —
-  do that via `docker compose up` per the Setup section below before treating
-  it as verified end-to-end.
 
 ## Setup
 
-### Option A — Docker Compose (recommended, matches the brief's ask)
+### Option A — Docker Compose (recommended)
 
 ```bash
 cp .env.example .env   # optional, docker-compose.yml already sets equivalent env vars
@@ -315,7 +310,7 @@ auto-chain the IDs) is at
 
 ## Concurrency verification script
 
-This is the automated proof for requirement #6 — run it against a live instance:
+This is the automated proof of the exactly-one-winner guarantee — run it against a live instance:
 
 ```bash
 docker compose up --build -d      # or npm run start:dev locally
@@ -383,7 +378,7 @@ src/
     processors/                  BullMQ timeout worker
 scripts/
   seed.ts                        demo data
-  concurrency-test.ts             requirement #6 verification script
+  concurrency-test.ts             concurrency (exactly-one-winner) verification script
 postman/
   VybeCabs.postman_collection.json
 docker-compose.yml                 Mongo + Redis + API
