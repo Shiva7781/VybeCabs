@@ -1,5 +1,7 @@
 # Vybe Cabs — Real-Time Driver Allocation System
 
+![Vybe Cabs architecture: rider → NestJS API → Redis GEO/Lua/BullMQ → drivers, exactly one wins](docs/architecture.svg)
+
 A backend service that simulates the core ride-hailing allocation workflow: a rider
 requests a ride, the nearest available drivers are found via Redis geo-search,
 multiple drivers are notified simultaneously over WebSockets, and exactly one of
